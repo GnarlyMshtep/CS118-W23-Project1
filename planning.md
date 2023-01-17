@@ -1,6 +1,6 @@
 ### Before weekend (per dev) 
 - setup dev envieroments in virtual box 
-- Read chapter 2 of the textbook 
+- Read chapter 2 of the textbook/TA slides (week 1)
 - decide on string parsing library 
 
 ### Development
