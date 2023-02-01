@@ -19,19 +19,33 @@ char *content_types[6] = {
     "application/pdf",
     "application/octet-stream\r\nContent-Disposition: inline"};
 
-void get_file_name_requested(char *http_request, char *file_name)
+void get_file_name_requested(char *http_request, char *file_name, char *content_type_name)
 {
     // we expect only GET requests, that should be formatted GET filename HTTP-version \r\n {other stuff}
     assert(http_request[0] == 'G' && http_request[1] == 'E' && http_request[2] == 'T' && http_request[3] == ' ' && http_request[4] == '/');
     const int first_relevent_idx = 5;
     int i = 0;
+    bool seen_dot = false;
+    int j = 0;
     while (http_request[i + first_relevent_idx] != ' ')
     {
+        if (seen_dot)
+        {
+            content_type_name[j] = http_request[i + first_relevent_idx];
+            j++;
+        }
         file_name[i] = http_request[i + first_relevent_idx];
+        if (http_request[i + first_relevent_idx] == '.')
+        {
+            seen_dot = true;
+        }
+
         i++;
     }
     // null terminate
     file_name[i] = 0;
+    content_type_name[j] = 0;
+
     if (i == 0)
     {
         file_name = "index.html";
@@ -103,8 +117,6 @@ int main(int argc, char *argv[])
 
     FILE *file;
 
-    
-
     // server socket descriptor
     int server_fd;
 
@@ -174,7 +186,36 @@ int main(int argc, char *argv[])
         // we read in the client's HTTP request and then we will parse this for the file name
         valread = read(new_socket, buffer, 1024);
 
-        get_file_name_requested(buffer, file_name);
+        char *content_type_name = char[100];
+        get_file_name_requested(buffer, file_name, content_type_name);
+
+        //* new stuff with per-file recording
+
+        file = fopen(file_name, "rb");
+        if (file == NULL)
+        { //! maybe here we would want to give a 404
+
+            perror("fopen");
+            return 1;
+        }
+
+        // getting file size
+        int file_size;
+
+        fseek(file, 0, SEEK_END);
+        file_size = ftell(file);
+        rewind(file);
+
+        // need http_header for proper HTTP response to client or there will be errors
+        char http_header[4096];
+        memset(http_header, 0, 4096);
+
+        // set http_header with our file size and our desired content type
+        sprintf(http_header, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: close\r\nContent-Type: %s\r\n\r\n", file_size, content_types[content_type]);
+
+        // prints out http_header for debugging purposes
+        printf("%s", http_header);
+
         // printing client request
         printf("%s\n", buffer);
 
