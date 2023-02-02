@@ -12,12 +12,13 @@
 #define PORT 15635
 
 // content types to put in http header
-char *content_types[6] = {
+char *content_types[7] = {
     "text/html",
     "text/plain",
     "image/png",
     "image/jpg",
     "application/pdf",
+    "image/x-icon",
     "application/octet-stream\r\nContent-Disposition: inline"};
 
 void get_file_name_requested(char *http_request, char *file_name, char *content_type_name)
@@ -63,6 +64,38 @@ void get_file_name_requested(char *http_request, char *file_name, char *content_
     printf("\nFILENAME REQUESTED: %s, CONTENT_TYPE_NAME:%s , I: %i\n", file_name, content_type_name, i);
 }
 
+char *canonicalize_content_type(char *content_type_name)
+{
+    if (strcmp(content_type_name, "html") == 0)
+    {
+        return content_types[0];
+    }
+    else if (strcmp(content_type_name, "txt") == 0)
+    {
+        return content_types[1];
+    }
+    else if (strcmp(content_type_name, "png") == 0)
+    {
+        return content_types[2];
+    }
+    else if (strcmp(content_type_name, "jpg") == 0)
+    {
+        return content_types[3];
+    }
+    else if (strcmp(content_type_name, "pdf") == 0)
+    {
+        return content_types[4];
+    }
+    else if (strcmp(content_type_name, "ico") == 0)
+    {
+        return content_types[4];
+    }
+    else /* default: */
+    {
+        printf("some unrecognized content type! has been requested: %s", content_type_name);
+        exit(1);
+    }
+}
 int main(int argc, char *argv[])
 {
     //* only declare server setting stuff out of loop
@@ -156,7 +189,7 @@ int main(int argc, char *argv[])
         //* build and send http header
 
         // set http_header with our file size and our desired content type
-        sprintf(http_header, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: close\r\nContent-Type: %s\r\n\r\n", file_size, content_type_name);
+        sprintf(http_header, "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: close\r\nContent-Type: %s\r\n\r\n", file_size, canonicalize_content_type(content_type_name));
 
         printf("%s", http_header); // prints out http_header for debugging purposes
 
