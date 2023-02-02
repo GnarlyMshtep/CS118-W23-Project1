@@ -19,7 +19,7 @@ char *content_types[7] = {
     "image/jpg",
     "application/pdf",
     "image/x-icon",
-    "application/octet-stream\r\nContent-Disposition: inline"};
+    "application/octet-stream"};
 
 void get_file_name_requested(char *http_request, char *file_name, char *content_type_name)
 {
@@ -27,7 +27,6 @@ void get_file_name_requested(char *http_request, char *file_name, char *content_
     if (!(http_request[0] == 'G' && http_request[1] == 'E' && http_request[2] == 'T' && http_request[3] == ' ' && http_request[4] == '/'))
     {
         // something we don't expect has occured
-        printf("CLIENT REQUEST \n ================================\n%s\n", http_request); // print client message for debugging purposes
         printf("client request was not of the expected format");
         exit(1);
     }
@@ -61,7 +60,10 @@ void get_file_name_requested(char *http_request, char *file_name, char *content_
     {
         // null terminate
         file_name[i] = 0;
-        content_type_name[j] = 0;
+        if (j != 0)
+        {
+            content_type_name[j] = 0;
+        }
     }
 
     printf("\nFILENAME REQUESTED: %s, CONTENT_TYPE_NAME:%s , I: %i\n", file_name, content_type_name, i);
@@ -91,7 +93,11 @@ char *canonicalize_content_type(char *content_type_name)
     }
     else if (strcmp(content_type_name, "ico") == 0)
     {
-        return content_types[4];
+        return content_types[5];
+    }
+    else if (strcmp(content_type_name, "") == 0)
+    {
+        return content_types[6];
     }
     else /* default: */
     {
@@ -167,6 +173,11 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
         valread = read(client_socket, buffer, 1024);
+        if (valread <= 0)
+        {
+            perror("socket read");
+        }
+
         // we read in the client's HTTP request and then we will parse this for the file name
 
         printf("CLIENT REQUEST \n ================================\n%s\n", buffer); // print client message for debugging purposes
