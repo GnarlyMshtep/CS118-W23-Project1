@@ -50,15 +50,18 @@ void get_file_name_requested(char *http_request, char *file_name, char *content_
 
         i++;
     }
-    // null terminate
-    file_name[i] = 0;
-    content_type_name[j] = 0;
 
     // serve default requests
     if (i == 0)
     {
-        file_name = "index.html";
-        content_type_name = "html";
+        sprintf(file_name, "index.html");
+        sprintf(content_type_name, "html");
+    }
+    else
+    {
+        // null terminate
+        file_name[i] = 0;
+        content_type_name[j] = 0;
     }
 
     printf("\nFILENAME REQUESTED: %s, CONTENT_TYPE_NAME:%s , I: %i\n", file_name, content_type_name, i);
@@ -152,7 +155,7 @@ int main(int argc, char *argv[])
         char buffer[1024] = {0};           // buffer for client HTTP request;
         char http_header[4096] = {0};      // header for http response
         char dbuffer[4096];                // for sending file-chunks
-        char file_name[1000] = {0};        // the file_name requested by client
+        char file_name[1000] = {'a'};      // the file_name requested by client
         int valread = 0;                   // valread is just number of bytes returned from read() which we will call later
         int file_size = 0;                 // client's file size
 
