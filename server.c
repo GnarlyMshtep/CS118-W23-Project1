@@ -23,57 +23,65 @@ char *content_types[7] = {
 
 void get_file_name_requested(char *http_request, char *file_name, char *content_type_name)
 {
-    
+
     // we expect only GET requests, that should be formatted GET filename HTTP-version \r\n {other stuff}
     if (!(http_request[0] == 'G' && http_request[1] == 'E' && http_request[2] == 'T' && http_request[3] == ' ' && http_request[4] == '/'))
     {
         // something we don't expect has occured
-        //printf("client request was not of the expected format");
+        printf("ERROR: client request was not of the expected format");
         if (http_request[0] == '0')
         {
-            //printf("But the request was empty, so we won't exit");
+            printf("But the request was empty, so we won't exit");
         }
         else
         {
-            //exit(1);
+            exit(1);
         }
     }
-    
+
     const int first_relevent_idx = 5;
     int i = 0;
     bool seen_dot = false;
     int j = 0;
-    int space_count = 0;
-
-    while (http_request[i + first_relevent_idx + space_count * 2] != ' ')
+    int special_count = 0;
+    int idx_into_req = first_relevent_idx;
+    while (http_request[idx_into_req] != ' ')
     {
-
+        // if we are parsing after after . which means we are trying to read content type_name
         if (seen_dot)
         {
-            content_type_name[j] = http_request[i + first_relevent_idx + space_count * 2];
+            content_type_name[j] = http_request[idx_into_req];
             j++;
         }
 
-        if (http_request[i + first_relevent_idx + space_count * 2] == '%' && http_request[i + first_relevent_idx + 1 + space_count * 2] == '2' && http_request[i + first_relevent_idx + 2 + space_count * 2] == '0')
+        // when we are trying to read a space
+        if (http_request[idx_into_req] == '%' && http_request[i + first_relevent_idx + 1 + special_count * 2] == '2' && http_request[i + first_relevent_idx + 2 + special_count * 2] == '0')
         {
             file_name[i] = ' ';
-            space_count += 1;
+            special_count += 1;
         }
-        else
+        else if (http_request[idx_into_req] == '%' && http_request[i + first_relevent_idx + 1 + special_count * 2] == '2' && http_request[i + first_relevent_idx + 2 + special_count * 2] == '5')
         {
-            //printf("here!");
-            file_name[i] = http_request[i + first_relevent_idx + space_count * 2];
+            file_name[i] = '%';
+            special_count += 1;
+        }
+        else // regular filename reading
+        {
+            file_name[i] = http_request[idx_into_req];
         }
 
-        if (http_request[i + first_relevent_idx + space_count * 2] == '.')
+        // what happens if we a .
+        if (http_request[idx_into_req] == '.')
         {
             seen_dot = true;
+            // resets content_type_name
             sprintf(content_type_name, "");
             j = 0;
         }
 
         i++;
-        printf("%i:%c,s:%s\n", i + first_relevent_idx, http_request[i + first_relevent_idx + space_count * 2], file_name);
+        printf("%i:%c,s:%s\n", i + first_relevent_idx, http_request[idx_into_req], file_name);
+        idx_into_req = i + first_relevent_idx + special_count * 2;
     }
 
     // serve default requests
@@ -127,9 +135,9 @@ char *canonicalize_content_type(char *content_type_name)
     }
     else /* default: */
     {
-        return content_types[6];
-        //printf("some unrecognized content type! has been requested: %s", content_type_name);
-        //exit(1);
+        // return content_types[6];
+        printf("some unrecognized content type! has been requested: %s", content_type_name);
+        exit(1);
     }
 }
 int main(int argc, char *argv[])
@@ -186,12 +194,12 @@ int main(int argc, char *argv[])
     {
         //*declare variables at the top of the loop because of overwriting fears
         FILE *file;                        // for user's file
-        int client_socket = 0;                 // client socket
+        int client_socket = 0;             // client socket
         char content_type_name[100] = {0}; // the type filename.{whatever} requested by client
         char buffer[4096] = {0};           // buffer for client HTTP request;
         char http_header[4096] = {0};      // header for http response
         char dbuffer[4096];                // for sending file-chunks
-        char file_name[4096];      // the file_name requested by client
+        char file_name[4096];              // the file_name requested by client
         int valread = 0;                   // valread is just number of bytes returned from read() which we will call later
         int file_size = 0;                 // client's file size
 
@@ -227,7 +235,7 @@ int main(int argc, char *argv[])
 
             // we send client socket the HTTP header first; make sure to do strlen instead of size_of (spent some time trying to debug this)
             send(client_socket, http_header, strlen(http_header), 0);
-            //fclose(file);
+            // fclose(file);
             close(client_socket);
             perror("fopen");
             continue;
@@ -259,7 +267,7 @@ int main(int argc, char *argv[])
         size_t bytes_read;
         if (file > 0 && file != NULL)
         {
-            //printf("call in loop of msg recieve");
+            // printf("call in loop of msg recieve");
             memset(dbuffer, 0, 4096); // so we don't send something that is no longer file-- or whatever
             while ((bytes_read = fread(dbuffer, 1, 4096, file)) > 0)
             {
@@ -267,7 +275,7 @@ int main(int argc, char *argv[])
                 {
                     close(client_socket);
                     perror("send:data-packets");
-                    //return 1;
+                    // return 1;
                 }
             }
         }
@@ -275,7 +283,6 @@ int main(int argc, char *argv[])
         close(client_socket);
         fclose(file);
     }
-
 
     return 0;
 }
