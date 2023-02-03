@@ -16,27 +16,29 @@ char *content_types[7] = {
     "text/html",
     "text/plain",
     "image/png",
-    "image/jpg",
+    "image/jpeg",
     "application/pdf",
     "image/x-icon",
     "application/octet-stream"};
 
 void get_file_name_requested(char *http_request, char *file_name, char *content_type_name)
 {
+    
     // we expect only GET requests, that should be formatted GET filename HTTP-version \r\n {other stuff}
     if (!(http_request[0] == 'G' && http_request[1] == 'E' && http_request[2] == 'T' && http_request[3] == ' ' && http_request[4] == '/'))
     {
         // something we don't expect has occured
-        printf("client request was not of the expected format");
+        //printf("client request was not of the expected format");
         if (http_request[0] == '0')
         {
-            printf("But the request was empty, so we won't exit");
+            //printf("But the request was empty, so we won't exit");
         }
         else
         {
-            exit(1);
+            //exit(1);
         }
     }
+    
     const int first_relevent_idx = 5;
     int i = 0;
     bool seen_dot = false;
@@ -59,13 +61,15 @@ void get_file_name_requested(char *http_request, char *file_name, char *content_
         }
         else
         {
-            printf("here!");
+            //printf("here!");
             file_name[i] = http_request[i + first_relevent_idx + space_count * 2];
         }
 
         if (http_request[i + first_relevent_idx + space_count * 2] == '.')
         {
             seen_dot = true;
+            sprintf(content_type_name, "");
+            j = 0;
         }
 
         i++;
@@ -75,8 +79,8 @@ void get_file_name_requested(char *http_request, char *file_name, char *content_
     // serve default requests
     if (i == 0)
     {
-        sprintf(file_name, "index.html");
-        sprintf(content_type_name, "html");
+        // sprintf(file_name, "index.html");
+        // sprintf(content_type_name, "html");
     }
     else
     {
@@ -123,8 +127,9 @@ char *canonicalize_content_type(char *content_type_name)
     }
     else /* default: */
     {
-        printf("some unrecognized content type! has been requested: %s", content_type_name);
-        exit(1);
+        return content_types[6];
+        //printf("some unrecognized content type! has been requested: %s", content_type_name);
+        //exit(1);
     }
 }
 int main(int argc, char *argv[])
@@ -152,6 +157,7 @@ int main(int argc, char *argv[])
 
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
     {
+        close(server_fd);
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
@@ -161,6 +167,7 @@ int main(int argc, char *argv[])
     if (bind(server_fd, (struct sockaddr *)&address,
              sizeof(address)) < 0)
     {
+        close(server_fd);
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
@@ -169,6 +176,7 @@ int main(int argc, char *argv[])
     //*done with setup -- listening
     if (listen(server_fd, 3) < 0)
     {
+        close(server_fd);
         perror("listen");
         exit(EXIT_FAILURE);
     }
@@ -178,12 +186,12 @@ int main(int argc, char *argv[])
     {
         //*declare variables at the top of the loop because of overwriting fears
         FILE *file;                        // for user's file
-        int client_socket;                 // client socket
+        int client_socket = 0;                 // client socket
         char content_type_name[100] = {0}; // the type filename.{whatever} requested by client
-        char buffer[1024] = {0};           // buffer for client HTTP request;
+        char buffer[4096] = {0};           // buffer for client HTTP request;
         char http_header[4096] = {0};      // header for http response
         char dbuffer[4096];                // for sending file-chunks
-        char file_name[1000] = {'a'};      // the file_name requested by client
+        char file_name[4096];      // the file_name requested by client
         int valread = 0;                   // valread is just number of bytes returned from read() which we will call later
         int file_size = 0;                 // client's file size
 
@@ -194,7 +202,7 @@ int main(int argc, char *argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        valread = read(client_socket, buffer, 1024);
+        valread = read(client_socket, buffer, 4096);
         if (valread <= 0)
         {
             perror("socket read");
@@ -212,9 +220,17 @@ int main(int argc, char *argv[])
         file = fopen(file_name, "rb");
         if (file == NULL)
         { //! maybe here we would want to give a 404, etc
+            // set http_header with our file size and our desired content type
+            sprintf(http_header, "HTTP/1.1 404 Not Found\r\n");
 
+            printf("%s", http_header); // prints out http_header for debugging purposes
+
+            // we send client socket the HTTP header first; make sure to do strlen instead of size_of (spent some time trying to debug this)
+            send(client_socket, http_header, strlen(http_header), 0);
+            //fclose(file);
+            close(client_socket);
             perror("fopen");
-            return 1;
+            continue;
         }
 
         // get the file size
@@ -241,16 +257,17 @@ int main(int argc, char *argv[])
         // we keep doing this until the number of bytes read from the file is 0
         // if send returns -1, it is an error
         size_t bytes_read;
-        if (file > 0)
+        if (file > 0 && file != NULL)
         {
-            printf("call in loop of msg recieve");
+            //printf("call in loop of msg recieve");
             memset(dbuffer, 0, 4096); // so we don't send something that is no longer file-- or whatever
             while ((bytes_read = fread(dbuffer, 1, 4096, file)) > 0)
             {
                 if (send(client_socket, dbuffer, bytes_read, 0) < 0)
                 {
+                    close(client_socket);
                     perror("send:data-packets");
-                    return 1;
+                    //return 1;
                 }
             }
         }
@@ -258,6 +275,7 @@ int main(int argc, char *argv[])
         close(client_socket);
         fclose(file);
     }
+
 
     return 0;
 }
