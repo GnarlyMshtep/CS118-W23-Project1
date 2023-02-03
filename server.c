@@ -28,26 +28,48 @@ void get_file_name_requested(char *http_request, char *file_name, char *content_
     {
         // something we don't expect has occured
         printf("client request was not of the expected format");
-        exit(1);
+        if (http_request[0] == '0')
+        {
+            printf("But the request was empty, so we won't exit");
+        }
+        else
+        {
+            exit(1);
+        }
     }
     const int first_relevent_idx = 5;
     int i = 0;
     bool seen_dot = false;
     int j = 0;
-    while (http_request[i + first_relevent_idx] != ' ')
+    int space_count = 0;
+
+    while (http_request[i + first_relevent_idx + space_count * 2] != ' ')
     {
+
         if (seen_dot)
         {
-            content_type_name[j] = http_request[i + first_relevent_idx];
+            content_type_name[j] = http_request[i + first_relevent_idx + space_count * 2];
             j++;
         }
-        file_name[i] = http_request[i + first_relevent_idx];
-        if (http_request[i + first_relevent_idx] == '.')
+
+        if (http_request[i + first_relevent_idx + space_count * 2] == '%' && http_request[i + first_relevent_idx + 1 + space_count * 2] == '2' && http_request[i + first_relevent_idx + 2 + space_count * 2] == '0')
+        {
+            file_name[i] = ' ';
+            space_count += 1;
+        }
+        else
+        {
+            printf("here!");
+            file_name[i] = http_request[i + first_relevent_idx + space_count * 2];
+        }
+
+        if (http_request[i + first_relevent_idx + space_count * 2] == '.')
         {
             seen_dot = true;
         }
 
         i++;
+        printf("%i:%c,s:%s\n", i + first_relevent_idx, http_request[i + first_relevent_idx + space_count * 2], file_name);
     }
 
     // serve default requests
